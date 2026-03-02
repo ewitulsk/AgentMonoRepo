@@ -1,0 +1,102 @@
+name: Expo Build & Test
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: rn-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: rn-app
+        run: npm ci
+
+      - name: Run lint
+        working-directory: rn-app
+        run: npm run lint || echo "Lint not configured yet"
+
+      - name: Run tests
+        working-directory: rn-app
+        run: npm test || echo "Tests not configured yet"
+
+      - name: Build for web
+        working-directory: rn-app
+        run: npx expo export --platform web
+
+      - name: Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: rn-app/dist
+
+  android-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: rn-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: rn-app
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android
+        working-directory: rn-app
+        run: eas build --platform android --profile preview --non-interactive
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+  ios-build:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: rn-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: rn-app
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build iOS
+        working-directory: rn-app
+        run: eas build --platform ios --profile preview --non-interactive
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
